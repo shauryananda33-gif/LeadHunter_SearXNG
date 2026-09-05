@@ -6,32 +6,13 @@ general:
 
 search:
   safe_search: 0
-  autocomplete: ""
   formats:
     - html
     - json
 
 server:
-  secret_key: "LEADHUNTER_SEARX_SECRET"
+  secret_key: "ultrasecretkey"
   limiter: false
-  image_proxy: false
   public_instance: false
-
-ui:
-  static_use_hash: true
-
-engines:
-  - name: google
-    disabled: false
-  - name: bing
-    disabled: false
-  - name: brave
-    disabled: false
-  - name: duckduckgo
-    disabled: false
-  - name: mojeek
-    disabled: false
-  - name: startpage
-    disabled: false
-  - name: qwant
-    disabled: false
+  image_proxy: false
+  method: "GET"
