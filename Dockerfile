@@ -1,16 +1,10 @@
-# Use the official SearXNG container and preserve its own runtime.
-# The previous versions incorrectly called `python3 -m searx.webapp` directly,
-# bypassing the dependencies/runtime prepared by the official image.
 FROM ghcr.io/searxng/searxng:2026.8.29-d226b78bc
 
 USER root
-
-COPY searxng/settings.yml /etc/searxng/settings.yml
+COPY settings.yml /etc/searxng/settings.yml
+COPY entrypoint.sh /entrypoint-leadhunter.sh
 COPY gateway.py /gateway.py
-COPY start.sh /start.sh
-
-RUN chmod +x /start.sh
+RUN chmod +x /entrypoint-leadhunter.sh
 
 EXPOSE 10000
-
-ENTRYPOINT ["/start.sh"]
+ENTRYPOINT ["/entrypoint-leadhunter.sh"]
