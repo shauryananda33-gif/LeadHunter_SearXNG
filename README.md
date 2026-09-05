@@ -1,47 +1,69 @@
-# LeadHunter Render SearXNG — FULL FIX v1.1
+# LeadHunter Render SearXNG — FULL REBUILD v1.2
 
-This replaces the previous broken Render package.
+This is a complete replacement for v1.0/v1.1.
 
-## What was fixed
+## Root cause fixed
 
-- Removed Python `crypt` completely.
-- No bcrypt/htpasswd generation.
-- No second proxy service.
-- Render supplies `SEARXNG_SECRET` automatically.
-- Render supplies a generated `SEARX_AUTH_PASSWORD` automatically.
-- The gateway uses standard-library Basic Auth.
-- SearXNG runs internally on port 8080.
-- Render exposes only the authenticated gateway on `$PORT`.
-- `/healthz` does not require authentication.
-- JSON search remains enabled.
+The previous builds directly executed:
 
-## Deploy
+    python3 -m searx.webapp
 
-Push the repository contents to GitHub and redeploy the Render Blueprint.
+That bypassed the official SearXNG container runtime and caused:
 
-The root must contain:
+    ModuleNotFoundError: No module named 'msgspec'
+
+This version does NOT do that.
+
+It uses the official SearXNG container entrypoint:
+
+    /usr/local/searxng/dockerfiles/docker-entrypoint.sh
+
+The official runtime starts SearXNG using the dependencies and application
+server included by the official image.
+
+The official SearXNG container is based on the project's current container
+runtime rather than treating the source package as a standalone Python module.
+
+## Architecture
+
+Internet
+   |
+Render public HTTPS
+   |
+authenticated gateway
+   |
+SearXNG internal :8080
+   |
+search engines
+
+Only the gateway listens on Render's `$PORT`.
+
+## Environment
+
+Render creates automatically:
+
+    SEARXNG_SECRET
+    SEARX_AUTH_PASSWORD
+
+and sets:
+
+    SEARX_AUTH_USER=leadhunter
+
+## Deployment
+
+Replace the entire repository with this package.
+
+The root must be:
 
     render.yaml
     Dockerfile
-    entrypoint.sh
+    start.sh
     gateway.py
     searxng/settings.yml
 
-Render will create:
+Then deploy the Render Blueprint.
 
-    SEARXNG_SECRET
-    SEARX_AUTH_USER
-    SEARX_AUTH_PASSWORD
-
-## Important: retrieving the generated password
-
-Because `render.yaml` now uses `generateValue: true`, Render owns the generated
-password. Open the service's Environment page and copy the generated
-`SEARX_AUTH_PASSWORD`.
-
-Do NOT invent another password in the Research Worker.
-
-## Health test
+## Test 1: health
 
 Open:
 
@@ -51,27 +73,35 @@ Expected:
 
     {"ok":true,"service":"leadhunter-searxng","status":"healthy"}
 
-## Search test
+## Test 2: authenticated JSON search
 
-Use Basic Auth:
+Use the generated Render password:
 
-    curl -u leadhunter:YOUR_GENERATED_PASSWORD       "https://YOUR-SERVICE.onrender.com/search?q=dentist+Indore&format=json&language=en"
+    curl -u leadhunter:YOUR_PASSWORD       "https://YOUR-SERVICE.onrender.com/search?q=dentist+Indore&format=json&language=en"
 
-Expected: HTTP 200 and JSON containing `results`.
+Expected:
 
-## Connect Research Worker
+    HTTP 200
 
-Only after the search test succeeds, set on the Research Worker:
+and JSON containing:
+
+    "results": [...]
+
+## Test 3: Research Worker
+
+Only after Test 2 succeeds, set on the Research Worker:
 
     SEARXNG_URL=https://YOUR-SERVICE.onrender.com
     SEARXNG_AUTH_USER=leadhunter
     SEARXNG_AUTH_PASSWORD=THE_RENDER_GENERATED_PASSWORD
 
-Then redeploy the Research Worker.
+Then redeploy the Research Worker and test /serp.
 
-## Production note
+## Important
 
-This Render deployment is for proving the research/search architecture without
-AWS. Render Free services may spin down when idle, and upstream search engines
-can still impose rate limits. Once the worker is proven, we can move only the
-search backend to better infrastructure without changing the worker API.
+Do not modify LeadHunter production until the Research Worker returns real
+search results.
+
+This Render setup is intended to prove the architecture without AWS. Render
+Free services can sleep when idle and search engines can still rate-limit
+upstream traffic, so it is not being treated as final search infrastructure.
