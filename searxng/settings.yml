@@ -20,8 +20,6 @@ server:
 ui:
   static_use_hash: true
 
-# Start with several engines. SearXNG can fall back when an individual
-# upstream engine is unavailable or rate-limited.
 engines:
   - name: google
     disabled: false

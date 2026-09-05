@@ -12,4 +12,4 @@ services:
       - key: SEARX_AUTH_USER
         value: leadhunter
       - key: SEARX_AUTH_PASSWORD
-        sync: false
+        generateValue: true

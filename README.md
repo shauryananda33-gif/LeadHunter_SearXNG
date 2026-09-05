@@ -1,75 +1,77 @@
-# LeadHunter SearXNG — Render v1
+# LeadHunter Render SearXNG — FULL FIX v1.1
 
-A temporary private-ish SearXNG service for the LeadHunter Research Worker.
+This replaces the previous broken Render package.
 
-## Architecture
+## What was fixed
 
-Render Research Worker
-        |
-        | HTTPS + Basic Auth
-        v
-LeadHunter SearXNG Render service
-        |
-        v
-SearXNG
-        |
-        +-- Google
-        +-- Bing
-        +-- Brave
-        +-- DuckDuckGo
-        +-- Mojeek
-        +-- Startpage
-        +-- Qwant
+- Removed Python `crypt` completely.
+- No bcrypt/htpasswd generation.
+- No second proxy service.
+- Render supplies `SEARXNG_SECRET` automatically.
+- Render supplies a generated `SEARX_AUTH_PASSWORD` automatically.
+- The gateway uses standard-library Basic Auth.
+- SearXNG runs internally on port 8080.
+- Render exposes only the authenticated gateway on `$PORT`.
+- `/healthz` does not require authentication.
+- JSON search remains enabled.
 
-## Deploy on Render
+## Deploy
 
-1. Push this folder to a new GitHub repository.
-2. In Render choose New -> Blueprint.
-3. Connect the repository.
-4. Render reads `render.yaml`.
-5. Set `SEARX_AUTH_PASSWORD` to a long random password when prompted.
-6. Deploy.
+Push the repository contents to GitHub and redeploy the Render Blueprint.
 
-The generated `SEARXNG_SECRET` is supplied automatically by Render.
+The root must contain:
 
-## Test
+    render.yaml
+    Dockerfile
+    entrypoint.sh
+    gateway.py
+    searxng/settings.yml
 
-Health endpoint:
+Render will create:
+
+    SEARXNG_SECRET
+    SEARX_AUTH_USER
+    SEARX_AUTH_PASSWORD
+
+## Important: retrieving the generated password
+
+Because `render.yaml` now uses `generateValue: true`, Render owns the generated
+password. Open the service's Environment page and copy the generated
+`SEARX_AUTH_PASSWORD`.
+
+Do NOT invent another password in the Research Worker.
+
+## Health test
+
+Open:
 
     https://YOUR-SERVICE.onrender.com/healthz
 
-It should return:
+Expected:
 
     {"ok":true,"service":"leadhunter-searxng","status":"healthy"}
 
-Search test:
+## Search test
 
-    curl -u leadhunter:YOUR_PASSWORD       "https://YOUR-SERVICE.onrender.com/search?q=dentist+Indore&format=json&language=en"
+Use Basic Auth:
 
-A successful response should contain a `results` array.
+    curl -u leadhunter:YOUR_GENERATED_PASSWORD       "https://YOUR-SERVICE.onrender.com/search?q=dentist+Indore&format=json&language=en"
+
+Expected: HTTP 200 and JSON containing `results`.
 
 ## Connect Research Worker
 
-Set these Render environment variables on the Research Worker:
+Only after the search test succeeds, set on the Research Worker:
 
     SEARXNG_URL=https://YOUR-SERVICE.onrender.com
     SEARXNG_AUTH_USER=leadhunter
-    SEARXNG_AUTH_PASSWORD=YOUR_PASSWORD
+    SEARXNG_AUTH_PASSWORD=THE_RENDER_GENERATED_PASSWORD
 
 Then redeploy the Research Worker.
 
-## Important
+## Production note
 
-This is a testing architecture, not the final production search infrastructure.
-
-Render Free services can spin down when idle and public Render IPs are not dedicated.
-The purpose here is to prove the LeadHunter research pipeline and search integration
-without AWS.
-
-Do not connect LeadHunter production until the worker's `/serp` endpoint returns
-real results consistently.
-
-If this service also receives HTTP 429 from upstream search engines, that is an
-upstream-engine rate limit rather than the previous public-SearXNG-instance
-rate-limit problem. We can then tune engine selection/query pacing or move only
-the search backend to a more suitable host later.
+This Render deployment is for proving the research/search architecture without
+AWS. Render Free services may spin down when idle, and upstream search engines
+can still impose rate limits. Once the worker is proven, we can move only the
+search backend to better infrastructure without changing the worker API.
