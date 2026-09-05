@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: leadhunter-searxng
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: SEARXNG_SECRET
+        generateValue: true
+      - key: SEARX_AUTH_USER
+        value: leadhunter
+      - key: SEARX_AUTH_PASSWORD
+        sync: false
