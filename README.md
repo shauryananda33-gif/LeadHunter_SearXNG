@@ -1,107 +1,48 @@
-# LeadHunter Render SearXNG — FULL REBUILD v1.2
+# LeadHunter SearXNG v2.0.0
 
-This is a complete replacement for v1.0/v1.1.
-
-## Root cause fixed
-
-The previous builds directly executed:
-
-    python3 -m searx.webapp
-
-That bypassed the official SearXNG container runtime and caused:
-
-    ModuleNotFoundError: No module named 'msgspec'
-
-This version does NOT do that.
-
-It uses the official SearXNG container entrypoint:
-
-    /usr/local/searxng/dockerfiles/docker-entrypoint.sh
-
-The official runtime starts SearXNG using the dependencies and application
-server included by the official image.
-
-The official SearXNG container is based on the project's current container
-runtime rather than treating the source package as a standalone Python module.
+Dedicated SearXNG backend for LeadHunter.
 
 ## Architecture
 
-Internet
-   |
-Render public HTTPS
-   |
-authenticated gateway
-   |
-SearXNG internal :8080
-   |
-search engines
+```text
+Research Worker
+      |
+      | HTTPS + Basic Auth
+      v
+Render Web Service :10000
+      |
+      v
+Auth Gateway
+      |
+      v
+Official SearXNG :8080
+      |
+      v
+Search engines
+```
 
-Only the gateway listens on Render's `$PORT`.
+This implementation uses the official SearXNG container runtime. It does **not** run `python -m searx.webapp` and does not depend on an obsolete internal entrypoint path.
 
-## Environment
+The free Render deployment uses a small Basic-Auth gateway because Render private services are not available on the free plan. The gateway exposes only `/healthz` without credentials and proxies authenticated GET requests to local SearXNG.
 
-Render creates automatically:
+## Deploy
 
-    SEARXNG_SECRET
-    SEARX_AUTH_PASSWORD
+1. Deploy this repository as `leadhunter-searxng` in Singapore.
+2. Let Render generate `SEARXNG_SECRET` and `SEARX_AUTH_PASSWORD`.
+3. Check `/healthz`.
+4. Test JSON search:
 
-and sets:
+```bash
+curl -u leadhunter:YOUR_PASSWORD \
+  "https://YOUR-SEARXNG.onrender.com/search?q=dentist+Indore&format=json&language=en"
+```
 
-    SEARX_AUTH_USER=leadhunter
+Expected: HTTP 200 with a JSON `results` array.
 
-## Deployment
+5. Put the Render URL and generated password into the Research Worker environment.
 
-Replace the entire repository with this package.
+## Later private deployment
 
-The root must be:
+On a paid Render plan, this can be converted to `type: pserv` and the Research Worker can use the internal Render hostname. The SearXNG configuration itself remains the same.
 
-    render.yaml
-    Dockerfile
-    start.sh
-    gateway.py
-    searxng/settings.yml
-
-Then deploy the Render Blueprint.
-
-## Test 1: health
-
-Open:
-
-    https://YOUR-SERVICE.onrender.com/healthz
-
-Expected:
-
-    {"ok":true,"service":"leadhunter-searxng","status":"healthy"}
-
-## Test 2: authenticated JSON search
-
-Use the generated Render password:
-
-    curl -u leadhunter:YOUR_PASSWORD       "https://YOUR-SERVICE.onrender.com/search?q=dentist+Indore&format=json&language=en"
-
-Expected:
-
-    HTTP 200
-
-and JSON containing:
-
-    "results": [...]
-
-## Test 3: Research Worker
-
-Only after Test 2 succeeds, set on the Research Worker:
-
-    SEARXNG_URL=https://YOUR-SERVICE.onrender.com
-    SEARXNG_AUTH_USER=leadhunter
-    SEARXNG_AUTH_PASSWORD=THE_RENDER_GENERATED_PASSWORD
-
-Then redeploy the Research Worker and test /serp.
-
-## Important
-
-Do not modify LeadHunter production until the Research Worker returns real
-search results.
-
-This Render setup is intended to prove the architecture without AWS. Render
-Free services can sleep when idle and search engines can still rate-limit
-upstream traffic, so it is not being treated as final search infrastructure.
+Never commit the generated password to GitHub.
