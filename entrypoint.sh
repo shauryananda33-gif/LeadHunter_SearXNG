@@ -9,6 +9,15 @@ export SEARXNG_SECRET
 
 /usr/local/searxng/entrypoint.sh &
 SEARX_PID=$!
+GATEWAY_PID=""
+
+cleanup() {
+    [ -n "$GATEWAY_PID" ] && kill "$GATEWAY_PID" 2>/dev/null || true
+    kill "$SEARX_PID" 2>/dev/null || true
+    wait "$SEARX_PID" 2>/dev/null || true
+    exit 0
+}
+trap cleanup INT TERM
 
 ready=0
 for _ in $(seq 1 90); do
@@ -29,4 +38,6 @@ if [ "$ready" -ne 1 ]; then
     exit 1
 fi
 
-exec python3 /gateway.py
+python3 /gateway.py &
+GATEWAY_PID=$!
+wait "$GATEWAY_PID"

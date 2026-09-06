@@ -1,10 +1,9 @@
 # Changelog
 
-## 2.0.0 — 2026-09-06
-
-- Replaced the obsolete SearXNG startup path with the official image entrypoint.
-- Removed the previous custom startup failure source.
-- Kept JSON and GET search enabled for the worker integration.
-- Added authenticated gateway protection for free Render deployments.
-- Added generated Render secrets for SearXNG and gateway access.
-- Simplified the deployment to one official SearXNG process plus a fixed local gateway.
+## 2.1.0 — 2026-09-06
+- Removed duplicate unused SearXNG settings file.
+- Removed hard-coded SearXNG secret from repository configuration.
+- Added constant-time gateway credential comparison.
+- Added request URI limit and upstream error logging.
+- Added clean shutdown handling for both SearXNG and gateway processes.
+- Simplified Render configuration to only deployment secrets actually used.
